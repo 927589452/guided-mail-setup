@@ -1,4 +1,50 @@
 #!/usr/bin/python
+###this keyring implementation is from http://dev.gentoo.org/~tomka/mail-setup.tar.bz2
+#with changes to accomodate multiple accounts on the same server
+#therefor we identify the username and passwords by the mail adress
+import re
+import sys
+import gtk
+import gnomekeyring as gkey
+
+class Keyring(object):
+    def __init__(self, name, mail, protocol):
+        self._name = name
+        self._mail = mail
+        self._protocol = protocol
+        self._keyring = gkey.get_default_keyring_sync()
+
+    def has_credentials(self):
+        try:
+            attrs = {"mail": self._mail, "protocol": self._protocol}
+            items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
+            return len(items) > 0
+        except gkey.DeniedError:
+            return False
+
+    def get_credentials(self):
+        attrs = {"mail": self._mail, "protocol": self._protocol}
+        items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
+        return (items[0].attributes["user"], items[0].secret)
+
+    def set_credentials(self, (user, pw)):
+        attrs = {
+                "user": user,
+                "mail": self._mail,
+                "protocol": self._protocol,
+            }
+        gkey.item_create_sync(gkey.get_default_keyring_sync(),
+                gkey.ITEM_NETWORK_PASSWORD, self._name, attrs, pw, True)
+
+def get_username(mail):
+    keyring = Keyring("offlineimap", mail, "imap")
+    (username, password) = keyring.get_credentials()
+    return username
+
+def get_password(mail):
+    keyring = Keyring("offlineimap", mail, "imap")
+    (username, password) = keyring.get_credentials()
+    return password
 
 msmtp=false
 offlineimap=false
