@@ -5,7 +5,7 @@
 #maybe someone has a better idea
 ##other elements are from URL: http://github.com/gaizka/misc-scripts/tree/master/msmtp
 
-
+import getpass
 import re
 import sys
 import gtk
@@ -73,9 +73,10 @@ def ask_type():
 			print "offlineimap"
 		if msmtp==True:
 			print "MSMTP"
-		print "What would you want to setup?"
-		print "( MSMTP | offlineimap | MUTT )"
-		INPUT=raw_input("Selecting an Option you already selected will disable it")
+		INPUT = raw_input(""" \
+What would you want to setup? \
+( MSMTP | offlineimap | MUTT )\n \
+Selecting an Option you already selected will disable it""") # it would be nice if i could higlight options here
 		if INPUT.lower()=="mutt": 
 			mutt=(bool(mutt)^(bool(1) )) 
 			#this operation toggles the bool state
@@ -98,80 +99,124 @@ class account(object):
 	account_type="IMAP" # or may be gmail
 	notmuch=False
 	def __init__(self):
-		mail=raw_input("Please enter the mail adress you would like to configure:")
+		mail=raw_input("Please enter the mail adress you would like to configure: ")
 		self.mail = mail
-		name=raw_input("What name would you like your account to go by? \n \
-			it should be unique and have enough information")
+		name=raw_input("""\
+What name would you like your account to go by? \n \
+it should be unique and have enough information""")
 		self.name = name
 		self.user = mail
-		self.imap_url=self.guess_imap()
-		self.smtp_url=self.guess_smtp()
-		self.pop_url=self.guess_pop()
-	def configure(self):
+		while True:
+			INPUT = raw_input("Username ( " + mail + "  ) :" )
+			if INPUT == "":
+				break
+			else:
+				self.user = INPUT
+		self.guess_imap()
+		while True:
+			INPUT = raw_input("IMAP URL (" + self.imap_url + ") : ")
+			if INPUT =="":
+				break
+			else:
+				self.imap_url=INPUT
+		while True:
+                        INPUT = raw_input("IMAP Port (" + self.imap_port + ") : ")
+                        if INPUT =="":
+                                break
+                        else:   
+                                self.imap_port=INPUT
+		self.guess_smtp()
+		while True:
+                        INPUT = raw_input("SMTP URL (" + self.smtp_url + ") : ")
+			if INPUT =="":
+                                break
+                        else:
+                                self.smtp_url=INPUT
+		while True:
+                        INPUT = raw_input("SMTP Port (" + self.smtp_port + ") : ")
+                        if INPUT =="":
+                                break
+                        else:   
+                                self.smtp_port=INPUT
+
+                self.guess_pop()
+		while True:
+                        INPUT = raw_input("POP URL (" + self.pop_url + ") : ")
+                        if INPUT =="":
+                                break
+                        else:   
+                                self.pop_url=INPUT
+                while True:
+                        INPUT = raw_input("POP Port (" + self.pop_port + ") : ")
+                        if INPUT =="":
+                                break
+                        else:   
+                                self.pop_port=INPUT
+		self.passwords()
+
+	def passwords(self):
 		keyring_offlineimap=Keyring("offlineimap", self.mail, "imap")
 		keyring_msmtp=Keyring("msmtp", self.smtp_url, "smtp")
 		keyring_mpop=Keyring("mpop", self.pop_url, "pop3")
 		ret=True #retry?
 		while ret:
-			msg = "Password for user '%s' as '%s' ? " %(user, mail)
+			msg = "Password for user '%s' as '%s' ? " %(self.user, self.mail)
 	        	passwd = getpass.getpass(msg)
         		passwd_confirmation = getpass.getpass("Confirmation ? ")
 			if passwd != passwd_confirmation:
         	        	print "ERR: password and password confirmation mismatch"
                 		ret = False
             		else:
-                		if keyring_offlineimap.has_credentials()==False:
-					if keyring_offlineimap.set_credentials(user,password):
-                   				print "Password successfully set for offlineimap"
-               				else:
-                   				print "ERR: Password failed to set for offlineimap"
-                    				ret = False
-				else:
-                                	delete=raw_input("Password is already set for offlineimap \n if it is incorrect please use a keyringmanager to delete it ")
-                                if keyring_offlineimap.has_credentials()==False:
-                                        if keyring_msmtp.set_credentials(user,password):
-                                                print "Password successfully set for msmtp"
-                                        else:   
-                                                print "ERR: Password failed to set for msmtp"
-                                                ret = False
-                                else:   
-                                        delete=raw_input("Password is already set for msmtp \n if it is incorrect please use a keyringmanager to delete it ")
+                		try  keyring_offlineimap.set_credentials(user,password):
+                   			print "Password successfully set for offlineimap"
+               			except:
+                   			print "ERR: Password failed to set for offlineimap"
+                    			try  keyring_offlineimap.has_credentials():
+						delete=raw_input(r'''
+Password is already set for offlineimap
+if it is incorrect please use a keyringmanager to delete it ''')
+					except:
+						pass
+					ret = False
+                                try  keyring_msmtp.set_credentials(user,password):
+                                        print "Password successfully set for msmtp"
+                                except:
+                                        print "ERR: Password failed to set for msmtp"
+                                        try  keyring_msmtp.has_credentials():
+                                                delete=raw_input(r'''
+Password is already set for offlineimap 
+if it is incorrect please use a keyringmanager to delete it ''')
+                                        except:
+                                                pass
+                                        ret = False
+				try  keyring_mpop.set_credentials(user,password):
+                                        print "Password successfully set for mpop"
+                                except: 
+                                        print "ERR: Password failed to set for mpop"
+                                        try  keyring_mpop.has_credentials():
+                                                delete=raw_input(r'''
+Password is already set for offlineimap 
+if it is incorrect please use a keyringmanager to delete it ''')
+                                        except: 
+                                                pass
+                                        ret = False
 
-                                if keyring_offlineimap.has_credentials()==False:
-                                        if keyring_mpop.set_credentials(user,password):
-                                                print "Password successfully set for mpop"
-                                        else:   
-                                                print "ERR: Password failed to set for mpop"
-                                                ret = False
-                                else:   
-                                        delete=raw_input("Password is already set for mpop \n if it is incorrect please use a keyringmanager to delete it ")
 
 
 
 	def guess_imap(self):
+		#will use self.imap_url =
+		#and self.imap_port =
 		pass
 	def guess_smtp(self):
+		#see above
 		pass
 	def guess_pop(self):
+		#see above
 		pass
 	def guess_type(self):
+		#seeabove
 		pass
-	def set_smtp(self,url):
-		smtp_url=url
-	def set_imap(self,url):	
-		imap_url=url
-	def set_pop(self,url):
-		pop_url=url
-	def set_type(self,string):
-		account_type=string
-	def get_imap(self):
-		return imap_url
-	def get_smtp(self):
-		return smtp_url
-	def get_pop(self):
-		return pop_url
-	def get_type(self):
-		return account_type
 	
 def write_offlineimap(account,config,autorefresh):
 	file=open(config,"r+")
@@ -360,22 +405,28 @@ def write_mutt(account):
 	pass	
 
 def gen_configs(account):
-	if mutt==True:
+	if account.mutt==True:
 		config_mutt=raw_input("Where should I put your mutt config")
 		print gen_mutt(account,config_mutt)
 		print "Is this correct"
 		
-	if msmtp==True:
+	if account.msmtp==True:
 		config_msmtp=raw_input("Where should I put your msmtp config")
 		print gen_msmtp(account,config_msmto)
 		print "Is this correct"
-	if offlineimap==True:
+	if account.offlineimap==True:
 		config_offlineimap=raw_input("Where should I put your offlineimap config")
 		print gen_offlineimap(account,config_offlineimap)
 		print "Is this correct"
 
 def main():
-	print "hi "
+	print """\
+###################################################################################
+################ Welcome to my configuration wizard ###############################
+################ I hope it can help you             ###############################
+################ My ASCII Skills suck !!!           ###############################
+###################################################################################"""
+
 	ask_type()
 	acc=account()
 	gen_configs(acc)
