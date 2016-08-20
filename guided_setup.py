@@ -56,18 +56,22 @@ def get_password(mail):
     (username, password) = keyring.get_credentials()
     return password
 
+msmtp=False
+offlineimap=False
+mutt=False
+
 def ask_type():
-	msmtp=false
-	offlineimap=false
-	mutt=false
+	msmtp=False
+	offlineimap=False
+	mutt=False
 
 	while True:
 		print "Currently i will setup " 
-		if mutt==true:
+		if mutt==True:
 			print "Mutt"
-		if offlineimap==true:
+		if offlineimap==True:
 			print "offlineimap"
-		if msmtp==true:
+		if msmtp==True:
 			print "MSMTP"
 		print "What would you want to setup?"
 		print "( MSMTP | offlineimap | MUTT )"
@@ -93,8 +97,11 @@ class account(object):
 	smtp_port="587"
 	account_type="IMAP" # or may be gmail
 	notmuch=False
-	def __init__(self,mail,name):
+	def __init__(self):
+		mail=raw_input("Please enter the mail adress you would like to configure:")
 		self.mail = mail
+		name=raw_input("What name would you like your account to go by? \n \
+			it should be unique and have enough information")
 		self.name = name
 		self.user = mail
 		self.imap_url=self.guess_imap()
@@ -166,98 +173,213 @@ class account(object):
 	def get_type(self):
 		return account_type
 	
-
 def write_offlineimap(account,config,autorefresh):
-	file=open(config,"r + ")
-	if mbnames_undefined:
-		file.write("[mbnames]")
-		file.write("enabled = yes")
-		file.write("filename = ~/.dotfiles/mutt/offlineimap/offlineimap_mailboxes")
-		file.write("header = \"mailboxes \"")
-		file.write("peritem = \"+%(accountname)s/%(foldername)s\"")
-		file.write("sep = \" \"")
-		file.write("footer = \"\n\"")
+	file=open(config,"r+")
+	file.write(gen_offlineimap(account,config,autorefresh))
+	file.close()
+def gen_offlineimap(account,config,autorefresh):
+	accounts=[]
+	accounts=get_offlineimap_accounts(config)
+	header= "\n"
+	if False: #header_undefinded:
+		header = header + "[general]\n"
+		header = header + "metadata = $HOME/.offlineimap \n"
+		header = header +  "accounts = " + ",".join(accounts,account) + "\n" 
+		header = header +  r'''
+#################################################################################
+\#this keyring implementation is from http://dev.gentoo.org/~tomka/mail-setup.tar.bz2
+\#with changes to accomodate multiple accounts on the same server
+\#therefor we identify the username and passwords by the mail adress and misuse the server field for that
+\#maybe someone has a better idea
+\##other elements are from URL: http://github.com/gaizka/misc-scripts/tree/master/msmtp
 
-	file.write("[Account " + account.name + "]")
-	file.write("localrepository = " + account.name + "_local")
-	file.write("remoterepository = " + account.name + "_remote")
-	file.write("status_backend = sqlite")
-	if account.notmuch==True:
-		file.write("postsynchook = notmuch new")
-	else:
-		file.write("#postsynchook = notmuch new")
-	if autorefresh != 0:
-		file.write("autorefresh = " + autorefresh)
-		file.write("quick = 5")
-	else:
-		file.write("#autorefresh = " + autorefresh)
-                file.write("#quick = 5")
+
+import re
+import sys
+import gtk
+try:
+    import gnomekeyring as gkey
+except ImportError:
+    print """Unable to import gnome keyring module
+On Debian like systems you probably need to install the following package(s):
+python-gnomekeyring"""
+    sys.exit(-1)
+
+class Keyring(object):
+    def __init__(self, name, mail, protocol):
+        self._name = name
+        self._mail = mail
+        self._protocol = protocol
+        self._keyring = gkey.get_default_keyring_sync()
+
+    def has_credentials(self):
+        try:
+            attrs = {"mail": self._mail, "protocol": self._protocol}
+            items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
+            return len(items) > 0
+        except gkey.DeniedError:
+            return False
+
+    def get_credentials(self):
+        attrs = {"mail": self._mail, "protocol": self._protocol}
+        items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
+        return (items[0].attributes["user"], items[0].secret) 
+
+    def set_credentials(self, (user, pw)):
+        attrs = {
+                "user": user,
+                "mail": self._mail,
+                "protocol": self._protocol,
+            }
+        gkey.item_create_sync(gkey.get_default_keyring_sync(),
+                gkey.ITEM_NETWORK_PASSWORD, self._name, attrs, pw, True)
+
+def get_username(mail):
+    keyring = Keyring("offlineimap", mail, "imap")
+    (username, password) = keyring.get_credentials()
+    return username
+
+def get_password(mail):
+    keyring = Keyring("offlineimap", mail, "imap")
+    (username, password) = keyring.get_credentials()
+    return password
+
+###this may be outsourced and imported with
+#################################################################################
+#pythonfile =  $HOME/Development/offlineimap/offlineimap-helpers.py  '''
+
+		header = header + "maxsyncaccounts = 20 \n"
+		header = header + "ui = quieti #other options are syslog,ttyui \n"
+		header = header + "fsync = false #fast but insecure sync \n"
+		header = header + "ignore-readonly = no \n \n"
 	
-	file.write("\n[Repository " + account.name + "_local]")
-        file.write("type = Maildir")
-        file.write("localfolders = " + maildir + "/" + account.name)
-        file.write("sep = .")
-        file.write("restoreatime = no")
-        file.write("maxconnections = 5")
+	mbnames = ""
+	if False: #mbnames_undefined:
+		mbnames = mbnames + r'''
+[mbnames]
+enabled = yes'''
+		path_mailboxes=raw_input("Where should i save the list of mailboxes? ")
+		mbnames = mbnames + "filename = " + path_mailboxes
+		mnames =  mbnames + r'''
+"mailboxes "
+peritem = "+%(accountname)s/%(foldername)s"
+sep = " "
+footer = "\n"
+incremental = yes
+'''	
+	conf = header + mbnames
+	conf= "[Account " + account.name + "]\n"
+	conf= conf + "localrepository = " + account.name + "_local\n"
+	conf= conf +"remoterepository = " + account.name + "_remote\n"
+	conf = conf +"status_backend = sqlite\n"
+	if account.notmuch==True:
+		conf=conf +"postsynchook = notmuch new\n"
+	else:
+		conf = conf +"#postsynchook = notmuch new\n"
+	if autorefresh != 0:
+		conf = conf + "autorefresh = " + autorefresh + "\n"
+		conf = conf + "quick = 5 \n"
+	else:
+		conf = conf + "#autorefresh = " + autorefresh + "\n"
+                conf = conf + "#quick = 5\n"
+	
+	conf = conf + "\n[Repository " + account.name + "_local]"
+        conf = conf + "type = Maildir"
+        conf = conf + "localfolders = " + maildir + "/" + account.name
+	conf = conf + r'''sep = .
+restoreatime = no
+maxconnections = 5'''
 	if account.type=="IMAP":
-        	file.write("#nametrans = lambda folder: re.sub('spam', '[Gmail].Spam',")
-	        file.write("#                           re.sub('drafts', '[Gmail].Drafts',")
-        	file.write("#                           re.sub('sent', '[Gmail].Sent Mail',")
-	        file.write("#                           re.sub('flagged', '[Gmail].Starred',")
-        	file.write("#                           re.sub('trash', '[Gmail].Trash',")
-        	file.write("#                           re.sub('archive', '[Gmail].All Mail', folder))))))")
+        	conf =conf + r'''
+#nametrans = lambda folder: re.sub('spam', '[Gmail].Spam',
+#                           re.sub('drafts', '[Gmail].Drafts',
+#                           re.sub('sent', '[Gmail].Sent Mail',
+#                           re.sub('flagged', '[Gmail].Starred',
+#                           re.sub('trash', '[Gmail].Trash',
+#                           re.sub('archive', '[Gmail].All Mail', folder))))))'''
 	else:
-		file.write("nametrans = lambda folder: re.sub('spam', '[Gmail].Spam',")
-                file.write("                           re.sub('drafts', '[Gmail].Drafts',")
-                file.write("                           re.sub('sent', '[Gmail].Sent Mail',")
-                file.write("                           re.sub('flagged', '[Gmail].Starred',")
-                file.write("                           re.sub('trash', '[Gmail].Trash',")
-                file.write("                           re.sub('archive', '[Gmail].All Mail', folder))))))")
+		conf = conf +r'''
+nametrans = lambda folder: re.sub('spam', '[Gmail].Spam',
+                           re.sub('drafts', '[Gmail].Drafts',
+                           re.sub('sent', '[Gmail].Sent Mail',
+                           re.sub('flagged', '[Gmail].Starred',
+                           re.sub('trash', '[Gmail].Trash',
+                           re.sub('archive', '[Gmail].All Mail', folder))))))'''
 
-        file.write("\n[Repository " + account.name + "_remote]\n")
+        conf = conf +"\n[Repository " + account.name + "_remote]\n"
         if account.type=="IMAP":
-		file.write("type = IMAP")
+		conf = conf + "type = IMAP"
         else:
-                file.write("type = GMAIL")
-	file.write("ssl = yes")
-        file.write("sslcacertfile = /etc/ssl/certs/ca-certificates.crt")
-        file.write("remoteusereval = get_username(\""+account.email + "\")")
-        file.write("remotepasseval = get_password(\""+account.email + "\")")
-        file.write("remotehost = account.imap_url")
-        file.write("realdelete = no")
-        file.write("maxconnections = 5")
-        file.write("folderfilter = lambda folder: \"important\" not in folder.lower()")
+                conf = conf + "type = GMAIL"
+	conf=conf + r'''ssl = yes
+sslcacertfile = /etc/ssl/certs/ca-certificates.crt
+remoteusereval = get_username("'''+account.email + r'''")
+remotepasseval = get_password("''' +account.email + r'''")
+remotehost = ''' + account.imap_url +r'''
+realdelete = no
+maxconnections = 5
+folderfilter = lambda folder: \"important\" not in folder.lower()'''
         if account.type=="IMAP":
-		file.write("#nametrans = lambda folder: re.sub('.*Spam$', 'spam',")
-        	file.write("#                          re.sub('.*Drafts$', 'drafts',")
-	        file.write("#                          re.sub('.*Sent Mail$', 'sent',")
-        	file.write("#                          re.sub('.*Starred$', 'flagged',")
-        	file.write("#                          re.sub('.*Trash$', 'trash',2)")
-        	file.write("#                          re.sub('.*All Mail$', 'archive', folder))))))")
+		conf = conf + r'''
+#nametrans = lambda folder: re.sub('.*Spam$', 'spam',
+#                          re.sub('.*Drafts$', 'drafts',
+#                          re.sub('.*Sent Mail$', 'sent',
+#                          re.sub('.*Starred$', 'flagged',
+#                          re.sub('.*Trash$', 'trash',2)
+#                          re.sub('.*All Mail$', 'archive', folder))))))'''
 	else:
-                file.write("nametrans = lambda folder: re.sub('.*Spam$', 'spam',")
-                file.write("                          re.sub('.*Drafts$', 'drafts',")
-                file.write("                          re.sub('.*Sent Mail$', 'sent',")
-                file.write("                          re.sub('.*Starred$', 'flagged',")
-                file.write("                          re.sub('.*Trash$', 'trash',2)")
-                file.write("                          re.sub('.*All Mail$', 'archive', folder))))))")
+		conf = conf + r'''
+nametrans = lambda folder: re.sub('.*Spam$', 'spam',
+                          re.sub('.*Drafts$', 'drafts',
+                          re.sub('.*Sent Mail$', 'sent',
+                          re.sub('.*Starred$', 'flagged',
+                          re.sub('.*Trash$', 'trash',2)
+                          re.sub('.*All Mail$', 'archive', folder))))))'''
 
 	file.close()
 
 
 def write_msmtp(account,config):
         file=open(config,"r + ")
-	file.write("#"+account.name)
-	file.write("account "+account.name)
-	file.write("host " + account.smtp_url)
-	file.write("from " + account.mail)
-	file.write("tls_starttls on")
-	file.write("port " + account.smtp_port)
-	file.write("auth on")
-	file.write("user " + account.user)
-	
+	file.write(gen_conf(account))
 	file.close()
+
+def gen_msmtp(account):
+	conf= ""
+	conf = conf + "#"+account.name
+        conf = conf + "account "+account.name
+        conf = conf + "host " + account.smtp_url
+        conf = conf + "from " + account.mail
+        conf = conf + "tls_starttls on"
+        conf = conf + "port " + account.smtp_port
+        conf = conf + "auth on"
+        conf = conf + "user " + account.user
+	return conf
 
 def write_mutt(account):
 	pass	
+
+def gen_configs(account):
+	if mutt==True:
+		config_mutt=raw_input("Where should I put your mutt config")
+		print gen_mutt(account,config_mutt)
+		print "Is this correct"
+		
+	if msmtp==True:
+		config_msmtp=raw_input("Where should I put your msmtp config")
+		print gen_msmtp(account,config_msmto)
+		print "Is this correct"
+	if offlineimap==True:
+		config_offlineimap=raw_input("Where should I put your offlineimap config")
+		print gen_offlineimap(account,config_offlineimap)
+		print "Is this correct"
+
+def main():
+	print "hi "
+	ask_type()
+	acc=account()
+	gen_configs(acc)
+
+
+main()
 
