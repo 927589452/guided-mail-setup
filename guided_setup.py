@@ -47,7 +47,19 @@ class Keyring(object):
             }
         gkey.item_create_sync(gkey.get_default_keyring_sync(),
                 gkey.ITEM_NETWORK_PASSWORD, self._name, attrs, pw, True)
+#this is adapted from the msmtp-gnome-tool 
+#probably the previous method could be adapted
+    def set_credentials_msmtp(self,user,pw):
+ # display name for password.
+        display_name = '%s password for %s at %s' % ("MSMTP", user, self._server)
 
+
+        usr_attrs = {'user':user, 'server':_server, 'protocol':smtp}
+
+        # Now it gets ready to add into the keyring. Do it.
+        # Its id will be returned if success or an exception will be raised
+    	gkey.item_create_sync(gkey.get_default_keyring_sync(), gkey.ITEM_NETWORK_PASSWORD, display_name, attrs, pw, False)
+	
 def get_username(mail):
     keyring = Keyring("offlineimap", mail, "imap")
     (username, password) = keyring.get_credentials()
@@ -102,65 +114,20 @@ class account(object):
 	smtp_port="587"
 	account_type="IMAP" # or may be gmail
 	notmuch=False
-	autorefresh=5
-	refresh=6
 	def __init__(self):
-		mail=raw_input("Please enter the mail adress you would like to configure: ")
-		self.mail = mail
-		name=raw_input("""\
-What name would you like your account to go by? \n \
-it should be unique and have enough information""")
-		self.name = name
-		self.user = mail
+		self.dummy_init()
+		configure="INIT"
 		while True:
-			INPUT = raw_input("Username ( " + mail + "  ) :" )
-			if INPUT == "":
+			if configure=="":
+				break
+			elif configure.lower() =="y":
 				break
 			else:
-				self.user = INPUT
-		if self.offlineimap==True:
-			self.guess_imap()
-			while True:
-				INPUT = raw_input("IMAP URL (" + self.imap_url + ") : ")
-				if INPUT =="":
-					break
-				else:
-					self.imap_url=INPUT
-			while True:
-                        	INPUT = raw_input("IMAP Port (" + self.imap_port + ") : ")
-                        	if INPUT =="":
-                                	break
-                       	 	else:   
-                                	self.imap_port=INPUT
-		if self.msmtp==True:
-			self.guess_smtp()
-			while True:
-                	        INPUT = raw_input("SMTP URL (" + self.smtp_url + ") : ")
-				if INPUT =="":
-                                	break
-	                        else:
-        	                        self.smtp_url=INPUT
-			while True:
-                        	INPUT = raw_input("SMTP Port (" + self.smtp_port + ") : ")
-                        	if INPUT =="":
-                                	break
-	                        else:   
-        	                        self.smtp_port=INPUT
-		if self.mpop==True:
-                	self.guess_pop()
-			while True:
-                        	INPUT = raw_input("POP URL (" + self.pop_url + ") : ")
-	                        if INPUT =="":
-        	                        break
-                	        else:   
-                        	        self.pop_url=INPUT
-	                while True:
-        	                INPUT = raw_input("POP Port (" + self.pop_port + ") : ")
-                	        if INPUT =="":
-                        	        break
-                        	else:   
-                               		self.pop_port=INPUT
-		
+				self.configure()
+				self.present()
+				configure=raw_input(r'''
+Is this what you expected ? (y | n )  : ''')
+
 		self.passwords()
 		if self.offlineimap==True:
 			while True:
@@ -175,13 +142,148 @@ it should be unique and have enough information""")
 					break
 				else:
 					self.refresh=INPUT
+
+	def dummy_init(self): #it would be nice to fill this with flags
+		self.fullname="Joe Smith"
+                self.mail="joe@exampe.com"
+                self.name="example_joe"
+                self.user = self.mail
+                if self.offlineimap==True:
+                        self.guess_imap()
+                        self.conf_offlineimap="foo/bar/offlineimap.conf"
+			self.refresh = "6" #quicksyncs
+			self.autorefresh = "5" # minutes
+                if self.msmtp==True:
+                        self.guess_smtp()
+                        self.conf_msmtp="foo/bar/.msmtprc"
+                if self.mpop==True:
+                        self.guess_pop()
+                if self.mutt==True:
+                        self.maildir='$HOME/Mail'
+                        self.path_mutt='$HOME/.dotfiles/mutt'
+                        self.path_mailboxes=self-path_mutt+'/offlineimap.d/offlineimap_mailboxes'
+		
+	def configure(self):
+                while True:
+                        INPUT=raw_input("Hi whats your name (" + self.fullname + ') :')
+                        if INPUT =="":
+                                break
+                        else:   
+                                self.fullname=INPUT
+                self.ask_type()
+                while True:
+                        mail=raw_input("Please enter the mail adress you would like to configure (" + self.mail + ': ')
+                        if mail == "":
+                                break
+                        else:   
+                                self.mail = mail
+                while True:
+                        name=raw_input('''
+What name would you like your account to go by? 
+it should be unique and have enough information ( ''' + self.name + ') :')
+                        if name=="":
+                                break
+                        else:
+                                self.name=name
+                while True:
+                        INPUT = raw_input("Username ( " + mail + "  ) :" )
+                        if INPUT == "":
+                                break
+                        else:
+                                self.user = INPUT
+                if self.offlineimap==True:
+                        while True:
+                                INPUT = raw_input("IMAP URL (" + self.imap_url + ") : ")
+                                if INPUT =="":
+                                        break
+                                else:
+                                        self.imap_url=INPUT
+                        while True:
+                                INPUT = raw_input("IMAP Port (" + self.imap_port + ") : ")
+                                if INPUT =="":
+                                        break
+                                else:
+                                        self.imap_port=INPUT
+                        while True:
+                                INPUT = raw_input("Autrefresh after " +self.autorefresh +" min:")
+                                if INPUT=="":
+                                        break
+                                else:   
+                                        self.autorefresh=INPUT
+                        while True:
+                                INPUT = raw_input("Full refresh after " +self.refresh + "quickrefresh: ")
+                                if INPUT =="":
+                                        break
+                                else:   
+                                        self.refresh=INPUT
+
+                        while True:
+                                conf=raw_input("where will your  offlineimap.conf be saved (" + self.conf_offlineimap + ') : ')
+                                if conf =="":
+                                        break
+                                else:
+                                        self.conf_offlineimap=conf
+                if self.msmtp==True:
+                        while True:
+                                INPUT = raw_input("SMTP URL (" + self.smtp_url + ") : ")
+                                if INPUT =="":
+                                        break
+                                else:
+                                        self.smtp_url=INPUT
+                        while True:
+                                INPUT = raw_input("SMTP Port (" + self.smtp_port + ") : ")
+                                if INPUT =="":
+                                        break
+                                else:
+                                        self.smtp_port=INPUT
+                        while True:
+                                conf=raw_input("where will your msmtprc be saved (" + self.conf_msmtp + ') : ')
+                                if conf =="":
+                                        break
+                                else:
+                                        self.conf_msmtp=conf
+
+                if self.mpop==True:
+                        while True:
+                                INPUT = raw_input("POP URL (" + self.pop_url + ") : ")
+                                if INPUT =="":
+                                        break
+                                else:
+                                        self.pop_url=INPUT
+                        while True:
+                                INPUT = raw_input("POP Port (" + self.pop_port + ") : ")
+                                if INPUT =="":
+                                        break
+                                else:
+                                        self.pop_port=INPUT
+                if self.mutt==True:
+                        while True:
+                                INPUT = raw_input("Maildir (" + self.maildir + '): ')
+                                if INPUT == "":
+                                        break
+                                else:
+                                        self.maildir=INPUT
+                        while True:
+                                INPUT=raw_input("Where will your mutt configs be (" + self.path_mutt + ') : ')
+                                if INPUT=="":
+                                        break
+                                else:
+                                        self.path_mutt=INPUT
+                        while True:
+                                INPUT=raw_input("Where should i save the list of Mailboxes (" + self.path_mailboxes + ')? : ')
+                                if INPUT =="":
+                                        break
+                                else:
+                                        self.path_mailboxes=INPUT
+
+
 	def passwords(self):
 		keyring_offlineimap=Keyring("offlineimap", self.mail, "imap")
 		keyring_msmtp=Keyring("msmtp", self.smtp_url, "smtp")
 		keyring_mpop=Keyring("mpop", self.pop_url, "pop3")
 		ret = True
 		while ret:
-			msg = "Password for user '%s' as '%s' ? " %(self.user, self.mail)
+			msg = "Password for user '%s' as '%s' on '%s'? " %(self.user, self.mail,self.smtp_url)
 	        	passwd = getpass.getpass(msg)
         		passwd_confirmation = getpass.getpass("Confirmation ? ")
 			if passwd != passwd_confirmation:
@@ -204,7 +306,7 @@ if it is incorrect please use a keyringmanager to delete it ''')
 							ret = True
                                 if self.msmtp==True:
 					try:
-						keyring_msmtp.set_credentials(self.user,password)
+						keyring_msmtp.set_credentials_msmtp(self.user,password)
         	                                print "Password successfully set for msmtp"
                 	                	ret_msmtp=False
 					except:
@@ -212,7 +314,7 @@ if it is incorrect please use a keyringmanager to delete it ''')
                                         	try:  
 							keyring_msmtp.has_credentials()
         	                                        delete=raw_input(r'''
-Password is already set for offlineimap 
+Password is already set for  msmtp
 if it is incorrect please use a keyringmanager to delete it ''')
 							ret_msmtp=False
                 	                        except:
@@ -227,7 +329,7 @@ if it is incorrect please use a keyringmanager to delete it ''')
                                         	try:
 							keyring_mpop.has_credentials()
         	                                        delete=raw_input(r'''
-Password is already set for offlineimap 
+Password is already set for mpop 
 if it is incorrect please use a keyringmanager to delete it ''')
 							ret_mpop=False
                         	                except: 
@@ -261,7 +363,7 @@ if it is incorrect please use a keyringmanager to delete it ''')
                 	if self.offlineimap==True:
                         	msg=msg+"offlineimap"
                 	if self.msmtp==True:
-                        	msg=msg "MSMTP"
+                        	msg=msg + "MSMTP"
 			if self.mpop==True:
 				msg=msg+"mpop"
 			print msg
@@ -317,29 +419,29 @@ python-gnomekeyring"""
     sys.exit(-1)
 
 class Keyring(object):
-    def __init__(self, name, mail, protocol):
+    def __init__(self, name, server, protocol):
         self._name = name
-        self._mail = mail
+        self._server = server
         self._protocol = protocol
         self._keyring = gkey.get_default_keyring_sync()
 
     def has_credentials(self):
         try:
-            attrs = {"mail": self._mail, "protocol": self._protocol}
+            attrs = {"server": self._server, "protocol": self._protocol}
             items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
             return len(items) > 0
         except gkey.DeniedError:
             return False
 
     def get_credentials(self):
-        attrs = {"mail": self._mail, "protocol": self._protocol}
+        attrs = {"server": self._server, "protocol": self._protocol}
         items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
         return (items[0].attributes["user"], items[0].secret) 
 
     def set_credentials(self, (user, pw)):
         attrs = {
                 "user": user,
-                "mail": self._mail,
+                "server": self._server,
                 "protocol": self._protocol,
             }
         gkey.item_create_sync(gkey.get_default_keyring_sync(),
@@ -369,7 +471,13 @@ def get_password(mail):
 		mbnames = mbnames + r'''
 [mbnames]
 enabled = yes'''
-		path_mailboxes=raw_input("Where should i save the list of mailboxes? ")
+		self.path_mailboxes='$HOME/.dotfiles/mutt/offlineimap.d/offlineimap_mailboxes'
+		while True:
+			INPUT=raw_input("Where should i save the list of Mailboxes (" + self.path_mailboxes + ')? : ')
+			if INPUT =="":
+				break	
+			else:
+				self.path_mailboxes=INPUT
 		mbnames = mbnames + "filename = " + path_mailboxes
 		mnames =  mbnames + r'''
 "mailboxes "
@@ -469,6 +577,65 @@ def gen_msmtp(account):
 
 def write_mutt(account):
 	pass	
+def gen_mutt(account):
+	#will generate/modify a offlineimap.d/offlineimap file containing the hooks and source commands
+	d_offlineimap=""
+	if False: #offlineimap.d/offlineimap does not exist
+		d_offlineimap = d_offlineimap + r'''
+# IMAP: offlineimap
+set folder = "%s" #"$HOME/Mail"
+source "%s" #$HOME/.dotfiles/mutt/offlineimap.d/offlineimap_mailboxes
+''' %(account.maildir,account.path_mailboxes)
+	d_offlineimap=d_offlineimap+r'''
+##ACCOUNT "%s"
+folder-hook ="%s"/*  'source "%s"/offlineimap.d/"%s"' ''' %(account.name,account.name,account.path_mutt,account.name)
+
+
+        #will generate a offlineimap.d/account.name file containing standard spool settings from etc
+
+	d_account=""
+	d_account=d_account+r'''
+##ACCOUNT "%s" #account.name
+# source with folder-hook $folder/imap.d/"%s"/*  #account.name
+source "%s" # account.path_mailboxes $HOME/.dotfiles/mutt/offlineimap.d/offlineimap_mailboxes 
+set spoolfile = "+"%s"/INBOX" #account.name
+set record = "+"%s"/Sent\ Items" #account.name
+set postponed = "+"%s"/Drafts" #account.name
+set pgp_autosign 
+set postponed="+"%s"/Drafts" #account.name
+set record="+"%s"/Sent\ Items" #account.name
+set from="%s <%s>" #account.fullname  account.mail
+set signature=""%s"/.signature-"%s"" #account.path_mutt account.name
+#random signature
+#set signature="fortune pathtofortunefile|"
+set sendmail="/bin/msmtp-enqueue.sh -C "%s" -a "%s""# account.conf_msmtp,account.name 
+
+##defining custom header
+unmy_hdr *
+unset use_from
+unset use_domain
+unset user_agent
+
+
+set certificate_file="%s"/importedcerts #account.path_mutt
+
+## Extra info.
+my_hdr X-Info: Keep It Simple, Stupid.
+
+## OS Info.
+my_hdr X-Operating-System: `uname -s`, kernel `uname -r`
+
+## This header only appears to MS Outlook users 
+my_hdr X-Message-Flag: WARNING!! Microsoft sucks
+
+## Custom Mail-User-Agent ID.
+my_hdr User-Agent: Every email client sucks, this one just sucks less.
+
+my_hdr Cc:      "%s" <"%s"> #account.fullname,account.mail
+my_hdr From:    "%s" <"%s"> #account.fullname,account.mail
+
+
+''' % (account.name,account.name,account.path_mailboxes,account.name,account.name,account.name,account.name,account.name,account.fullname,account.mail,account.path_mutt,account.name,account.conf_msmtp,account.name,account.path_mutt,account.fullname,account.mail,account.fullname,account.mail)
 
 def gen_configs(account):
 	if account.mutt==True:
@@ -476,11 +643,11 @@ def gen_configs(account):
 		print gen_mutt(account,config_mutt)
 		print "Is this correct"
 		
-	if True: # account.msmtp==True:
+	if account.msmtp==True:
 		#config_msmtp=raw_input("Where should I put your msmtp config")
 		print gen_msmtp(account)
 		print "Is this correct"
-	if True: # account.offlineimap==True:
+	if account.offlineimap==True:
 		#config_offlineimap=raw_input("Where should I put your offlineimap config")
 		print gen_offlineimap(account,config_offlineimap)
 		print "Is this correct"
