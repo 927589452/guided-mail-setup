@@ -120,6 +120,7 @@ class account(object):
 	smtp_port="587"
 	account_type="IMAP" # or may be gmail
 	notmuch=False
+	password="dont fucking use this if you have no reason for it"
 	def __init__(self):
 		self.ask_type()
 		self.dummy_init()
@@ -296,53 +297,57 @@ it should be unique and have enough information ( ''' + self.name + ') :')
 			if passwd != passwd_confirmation:
 				print "ERR: password and password confirmation mismatch"
                 	else:	
-				if self.offlineimap==True:
-					try:
-						keyring_offlineimap.set_credentials(self.user,passwd)
-                	   			print "Password successfully set for offlineimap"
-						ret_offlineimap = False
-               				except:
-                   				print "ERR: Password failed to set for offlineimap"
-	                    			try:
-							keyring_offlineimap.has_credentials()
-							delete=raw_input(r'''Password is already set for offlineimap
-if it is incorrect please use a keyringmanager to delete it ''')
+				if force_keyring==True:
+				
+					if self.offlineimap==True:
+						try:
+							keyring_offlineimap.set_credentials(self.user,passwd)
+                		   			print "Password successfully set for offlineimap"
 							ret_offlineimap = False
+               					except:
+                   					print "ERR: Password failed to set for offlineimap"
+		                    			try:
+								keyring_offlineimap.has_credentials()
+								delete=raw_input(r'''Password is already set for offlineimap
+if it is incorrect please use a keyringmanager to delete it ''')
+								ret_offlineimap = False
+							except:
+								ret = True
+	                                if self.msmtp==True:
+						try:
+							keyring_msmtp.set_credentials_msmtp(self.user,password)
+        	        	                        print "Password successfully set for msmtp"
+                	        	        	ret_msmtp=False
 						except:
-							ret = True
-                                if self.msmtp==True:
-					try:
-						keyring_msmtp.set_credentials_msmtp(self.user,password)
-        	                                print "Password successfully set for msmtp"
-                	                	ret_msmtp=False
-					except:
-                                	        print "ERR: Password failed to set for msmtp"
-                                        	try:  
-							keyring_msmtp.has_credentials()
-        	                                        delete=raw_input(r'''
+	                                	        print "ERR: Password failed to set for msmtp"
+        	                                	try:  
+								keyring_msmtp.has_credentials()
+        	        	                                delete=raw_input(r'''
 Password is already set for  msmtp
 if it is incorrect please use a keyringmanager to delete it ''')
-							ret_msmtp=False
-                	                        except:
-                                	                ret=True
-				if self.mpop==True:
-					try:  
-						keyring_mpop.set_credentials(self.user,password)
-        	                                print "Password successfully set for mpop"
-						ret_mpop=False
-                        	        except: 
-                                	        print "ERR: Password failed to set for mpop"
-                                        	try:
-							keyring_mpop.has_credentials()
-        	                                        delete=raw_input(r'''
+								ret_msmtp=False
+                	                	        except:
+                                	        	        ret=True
+					if self.mpop==True:
+						try:  
+							keyring_mpop.set_credentials(self.user,password)
+        	        	                        print "Password successfully set for mpop"
+							ret_mpop=False
+                        	        	except: 
+	                                	        print "ERR: Password failed to set for mpop"
+        	                                	try:
+								keyring_mpop.has_credentials()
+        	        	                                delete=raw_input(r'''
 Password is already set for mpop 
 if it is incorrect please use a keyringmanager to delete it ''')
-							ret_mpop=False
-                        	                except: 
-                                	                ret=True
-
-				break
-
+								ret_mpop=False
+                        	        	        except: 
+                                	        	        ret=True
+					break
+				else:
+					self.password=passwd
+					break
+			
 	def guess_imap(self):
 		#will use self.imap_url =
 		#and self.imap_port =
@@ -386,7 +391,6 @@ Selecting an Option you already selected will disable it: ''') # it would be nic
                         	self.offlineimap=(bool(self.offlineimap)^(bool(1)))
 			elif INPUT.lower()=="mpop":
                         	self.mpop=(bool(self.mpop)^(bool(1)))
-
                 	elif INPUT == "":   
                         	break
                 	else:
@@ -396,15 +400,21 @@ def write_offlineimap(account,config,autorefresh):
 	file=open(config,"r+")
 	file.write(gen_offlineimap(account,config,autorefresh))
 	file.close()
+
+def get_offlineimap_accounts(self,config):
+	return [] #similiar to pass
+
 def gen_offlineimap(account,config):
 	accounts=[]
-#	accounts=get_offlineimap_accounts(config)
+	accounts=account.get_offlineimap_accounts(config)
 	header= "\n"
 	if False: #header_undefinded:
 		header = header + "[general]\n"
 		header = header + "metadata = $HOME/.offlineimap \n"
 		header = header +  "accounts = " + ",".join(accounts,account) + "\n" 
-		header = header +  r'''
+		if force_keyring:
+			helper_path = ""
+			helper =  r'''
 #################################################################################
 \#this keyring implementation is from http://dev.gentoo.org/~tomka/mail-setup.tar.bz2
 \#with changes to accomodate multiple accounts on the same server
@@ -465,12 +475,22 @@ def get_password(mail):
 
 ###this may be outsourced and imported with
 #################################################################################
-#pythonfile =  $HOME/Development/offlineimap/offlineimap-helpers.py  '''
+#pythonfile =  $HOME/Development/offlineimap/offlineimap-helpers.py  
+'''
+		f=open(header_path) #should create if not existing
+		f.write ( helper )
+		f.close
+	
+		header=header+r'pythonfile = %s ' % (helper_path) 
+	else:
+	header = header + r'''
+maxsyncaccounts = 20 
+ui = quieti #other options are syslog,ttyui 
+fsync = false #fast but insecure sync 
+ignore-readonly = no 
 
-		header = header + "maxsyncaccounts = 20 \n"
-		header = header + "ui = quieti #other options are syslog,ttyui \n"
-		header = header + "fsync = false #fast but insecure sync \n"
-		header = header + "ignore-readonly = no \n \n"
+
+'''
 	
 	mbnames = ""
 	if False: #mbnames_undefined:
@@ -538,12 +558,12 @@ nametrans = lambda folder: re.sub('spam', '[Gmail].Spam',
                 conf = conf + "type = GMAIL"
 	conf=conf + r'''ssl = yes
 sslcacertfile = /etc/ssl/certs/ca-certificates.crt
-remoteusereval = get_username("'''+account.email + r'''")
-remotepasseval = get_password("''' +account.email + r'''")
-remotehost = ''' + account.imap_url +r'''
+remoteusereval = get_username("%s")
+remotepasseval = get_password("%s")
+remotehost = %s
 realdelete = no
 maxconnections = 5
-folderfilter = lambda folder: \"important\" not in folder.lower()'''
+folderfilter = lambda folder: \"important\" not in folder.lower()''' % (account.email,account.email,account.imap_url)
         if account.type=="IMAP":
 		conf = conf + r'''
 #nametrans = lambda folder: re.sub('.*Spam$', 'spam',
@@ -560,7 +580,6 @@ nametrans = lambda folder: re.sub('.*Spam$', 'spam',
                           re.sub('.*Starred$', 'flagged',
                           re.sub('.*Trash$', 'trash',2)
                           re.sub('.*All Mail$', 'archive', folder))))))'''
-
 	file.close()
 
 
