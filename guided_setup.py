@@ -9,6 +9,9 @@ import getpass
 import re
 import sys
 import gtk
+force_keyring=True;
+if force_keyring == True :
+#
 try:
     import gnomekeyring as gkey
 except ImportError:
@@ -69,6 +72,9 @@ def get_password(mail):
     keyring = Keyring("offlineimap", mail, "imap")
     (username, password) = keyring.get_credentials()
     return password
+#
+else:
+#write password to file ( not suggested )
 
 msmtp=False
 offlineimap=False
@@ -115,6 +121,7 @@ class account(object):
 	account_type="IMAP" # or may be gmail
 	notmuch=False
 	def __init__(self):
+		self.ask_type()
 		self.dummy_init()
 		configure="INIT"
 		while True:
@@ -170,23 +177,21 @@ Is this what you expected ? (y | n )  : ''')
                                 break
                         else:   
                                 self.fullname=INPUT
-                self.ask_type()
                 while True:
-                        mail=raw_input("Please enter the mail adress you would like to configure (" + self.mail + ': ')
+                        mail=raw_input("Please enter the mail adress you would like to configure (" + self.mail + '): ')
                         if mail == "":
                                 break
                         else:   
                                 self.mail = mail
                 while True:
-                        name=raw_input('''
-What name would you like your account to go by? 
+                        name=raw_input('''What name would you like your account to go by? 
 it should be unique and have enough information ( ''' + self.name + ') :')
                         if name=="":
                                 break
                         else:
                                 self.name=name
                 while True:
-                        INPUT = raw_input("Username ( " + mail + "  ) :" )
+                        INPUT = raw_input("Username ( " + self.user + ") :" )
                         if INPUT == "":
                                 break
                         else:
@@ -277,6 +282,8 @@ it should be unique and have enough information ( ''' + self.name + ') :')
                                         self.path_mailboxes=INPUT
 
 
+	def present(self):
+		pass
 	def passwords(self):
 		keyring_offlineimap=Keyring("offlineimap", self.mail, "imap")
 		keyring_msmtp=Keyring("msmtp", self.smtp_url, "smtp")
@@ -298,8 +305,7 @@ it should be unique and have enough information ( ''' + self.name + ') :')
                    				print "ERR: Password failed to set for offlineimap"
 	                    			try:
 							keyring_offlineimap.has_credentials()
-							delete=raw_input(r'''
-Password is already set for offlineimap
+							delete=raw_input(r'''Password is already set for offlineimap
 if it is incorrect please use a keyringmanager to delete it ''')
 							ret_offlineimap = False
 						except:
@@ -565,14 +571,17 @@ def write_msmtp(account,config):
 
 def gen_msmtp(account):
 	conf= ""
-	conf = conf + "#"+account.name +"\n"
-        conf = conf + "account "+account.name +"\n"
-        conf = conf + "host " + account.smtp_url +"\n"
-        conf = conf + "from " + account.mail +"\n"
-        conf = conf + "tls_starttls on" +"\n"
-        conf = conf + "port " + account.smtp_port +"\n"
-        conf = conf + "auth on" +"\n"
-        conf = conf + "user " + account.user +"\n"
+	conf = r'''
+# %s
+account %s
+host %s 
+from %s 
+tls_starttls on
+port %s 
+auth on
+user %s  
+''' % (account.name,account.name,account.smtp_url,account.mail,account.smtp_port,account.user)
+
 	return conf
 
 def write_mutt(account):
