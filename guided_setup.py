@@ -31,9 +31,9 @@ python-gnomekeyring"""
         		try:
             			attrs = {"server": self._server, "protocol": self._protocol}
             			items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
-            		return len(items) > 0
-        	except gkey.DeniedError:
-            		return False
+            			return len(items) > 0
+        		except gkey.DeniedError:
+            			return False
 
     		def get_credentials(self):
         		attrs = {"server": self._server, "protocol": self._protocol}
@@ -75,7 +75,7 @@ python-gnomekeyring"""
 #
 else:
 #write password to file ( not suggested )
-
+	pass
 msmtp=False
 offlineimap=False
 mutt=False
@@ -185,7 +185,8 @@ Is this what you expected ? (y | n )  : ''')
                         else:   
                                 self.mail = mail
                 while True:
-                        name=raw_input('''What name would you like your account to go by? 
+                        name=raw_input('''
+What name would you like your account to go by? 
 it should be unique and have enough information ( ''' + self.name + ') :')
                         if name=="":
                                 break
@@ -362,9 +363,9 @@ if it is incorrect please use a keyringmanager to delete it ''')
 		#seeabove
 		pass
 	def ask_type(self):
-        	self.msmtp=False
-        	self.offlineimap=False
-        	self.mutt=False
+        	#self.msmtp=False
+        	#self.offlineimap=False
+        	#self.mutt=False
 
  	       	while True:
                 	print "Currently i will setup "
@@ -379,17 +380,22 @@ if it is incorrect please use a keyringmanager to delete it ''')
 				msg=msg+"mpop"
 			print msg
                 	INPUT = raw_input(r''' 
-What would you want to setup? 
-( MSMTP | offlineimap | MUTT | mpop)
-Selecting an Option you already selected will disable it: ''') # it would be nice if i could higlight options here
-                	if INPUT.lower()=="mutt":
+What would you want to setup?
+ 
+1 MSMTP | 
+2 offlineimap |
+3 MUTT |
+4 mpop 
+Selecting an Option you already selected will disable it
+Pressing enter will end the selection : ''') # it would be nice if i could higlight options here
+                	if INPUT.lower()=="mutt" or INPUT.lower()=="3":
                         	self.mutt=(bool(self.mutt)^(bool(1) ))
                         	#this operation toggles the bool state
-                	elif INPUT.lower()=="msmtp":
+                	elif INPUT.lower()=="msmtp" or INPUT.lower()=="1" :
                         	self.msmtp=(bool(self.msmtp)^(bool(1)))
-                	elif INPUT.lower()=="offlineimap":
+                	elif INPUT.lower()=="offlineimap" or INPUT.lower()=="2":
                         	self.offlineimap=(bool(self.offlineimap)^(bool(1)))
-			elif INPUT.lower()=="mpop":
+			elif INPUT.lower()=="mpop" or INPUT.lower() == "4":
                         	self.mpop=(bool(self.mpop)^(bool(1)))
                 	elif INPUT == "":   
                         	break
@@ -477,13 +483,13 @@ def get_password(mail):
 #################################################################################
 #pythonfile =  $HOME/Development/offlineimap/offlineimap-helpers.py  
 '''
-		f=open(header_path) #should create if not existing
-		f.write ( helper )
-		f.close
+			f=open(header_path) #should create if not existing
+			f.write ( helper )
+			f.close
 	
-		header=header+r'pythonfile = %s ' % (helper_path) 
-	else:
-	header = header + r'''
+			header=header+r'pythonfile = %s ' % (helper_path) 
+		else:
+			header = header + r'''
 maxsyncaccounts = 20 
 ui = quieti #other options are syslog,ttyui 
 fsync = false #fast but insecure sync 
