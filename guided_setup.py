@@ -80,35 +80,6 @@ msmtp=False
 offlineimap=False
 mutt=False
 
-def ask_type():
-	msmtp=False
-	offlineimap=False
-	mutt=False
-
-	while True:
-		print "Currently i will setup " 
-		if mutt==True:
-			print "Mutt"
-		if offlineimap==True:
-			print "offlineimap"
-		if msmtp==True:
-			print "MSMTP"
-		INPUT = raw_input(""" \
-What would you want to setup? \
-( MSMTP | offlineimap | MUTT )\n \
-Selecting an Option you already selected will disable it""") # it would be nice if i could higlight options here
-		if INPUT.lower()=="mutt": 
-			mutt=(bool(mutt)^(bool(1) )) 
-			#this operation toggles the bool state
-		elif INPUT.lower()=="msmtp":
-			msmtp=(bool(mutt)^(bool(1)))
-		elif INPUT.lower()=="offlineimap":
-			offlineimap=(bool(mutt)^(bool(1)))
-		elif INPUT == "":
-			break
-		else:
-			print "Sorry" , INPUT, "is not a valid input"
-
 class account(object):
 	##support for legacy mpop
 	mpop=False
@@ -363,21 +334,26 @@ if it is incorrect please use a keyringmanager to delete it ''')
 		#seeabove
 		pass
 	def ask_type(self):
-        	#self.msmtp=False
-        	#self.offlineimap=False
-        	#self.mutt=False
+        	self.msmtp=False
+        	self.offlineimap=False
+        	self.mutt=False
 
  	       	while True:
-                	print "Currently i will setup "
+                	print r'''
+Currently i will setup '''
                 	msg=""
-			if self.mutt==True:
-                        	msg=msg+ "Mutt"
-                	if self.offlineimap==True:
-                        	msg=msg+"offlineimap"
                 	if self.msmtp==True:
-                        	msg=msg + "MSMTP"
+                        	msg=msg + r'''
+1 MSMTP'''
+                        if self.offlineimap==True:
+                                msg=msg+r'''
+2 offlineimap'''
+                        if self.mutt==True:
+                                msg=msg+ r'''
+3 MUTT'''
 			if self.mpop==True:
-				msg=msg+"mpop"
+				msg=msg+r'''
+4 mpop'''
 			print msg
                 	INPUT = raw_input(r''' 
 What would you want to setup?
@@ -386,6 +362,7 @@ What would you want to setup?
 2 offlineimap |
 3 MUTT |
 4 mpop 
+
 Selecting an Option you already selected will disable it
 Pressing enter will end the selection : ''') # it would be nice if i could higlight options here
                 	if INPUT.lower()=="mutt" or INPUT.lower()=="3":
