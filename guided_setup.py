@@ -12,66 +12,66 @@ import gtk
 force_keyring=True;
 if force_keyring == True :
 #
-try:
-    import gnomekeyring as gkey
-except ImportError:
-    print """Unable to import gnome keyring module
+	try:
+    		import gnomekeyring as gkey
+	except ImportError:
+    		print """Unable to import gnome keyring module
 On Debian like systems you probably need to install the following package(s):
 python-gnomekeyring"""
-    sys.exit(-1)
+    		sys.exit(-1)
 
-class Keyring(object):
-    def __init__(self, name, server, protocol): #instead of server we use mail for offlineimap
-        self._name = name
-        self._server = server
-        self._protocol = protocol
-        self._keyring = gkey.get_default_keyring_sync()
+	class Keyring(object):
+    		def __init__(self, name, server, protocol): #instead of server we use mail for offlineimap
+        		self._name = name
+        		self._server = server
+        		self._protocol = protocol
+        		self._keyring = gkey.get_default_keyring_sync()
 
-    def has_credentials(self):
-        try:
-            attrs = {"server": self._server, "protocol": self._protocol}
-            items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
-            return len(items) > 0
-        except gkey.DeniedError:
-            return False
+    		def has_credentials(self):
+        		try:
+            			attrs = {"server": self._server, "protocol": self._protocol}
+            			items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
+            		return len(items) > 0
+        	except gkey.DeniedError:
+            		return False
 
-    def get_credentials(self):
-        attrs = {"server": self._server, "protocol": self._protocol}
-        items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
-        return (items[0].attributes["user"], items[0].secret)
+    		def get_credentials(self):
+        		attrs = {"server": self._server, "protocol": self._protocol}
+        		items = gkey.find_items_sync(gkey.ITEM_NETWORK_PASSWORD, attrs)
+        		return (items[0].attributes["user"], items[0].secret)
 
     #def set_credentials(self, (user, pw)):
-    def set_credentials(self, (user, pw)):
+    		def set_credentials(self, (user, pw)):
         
-	attrs = {
-                "user": user,
-                "server": self._server,
-                "protocol": self._protocol,
-            }
-        gkey.item_create_sync(gkey.get_default_keyring_sync(),
-                gkey.ITEM_NETWORK_PASSWORD, self._name, attrs, pw, True)
+			attrs = {
+                		"user": user,
+                		"server": self._server,
+                		"protocol": self._protocol,
+            		}
+        		gkey.item_create_sync(gkey.get_default_keyring_sync(),
+                	gkey.ITEM_NETWORK_PASSWORD, self._name, attrs, pw, True)
 #this is adapted from the msmtp-gnome-tool 
 #probably the previous method could be adapted
-    def set_credentials_msmtp(self,user,pw):
+    		def set_credentials_msmtp(self,user,pw):
  # display name for password.
-        display_name = '%s password for %s at %s' % ("MSMTP", user, self._server)
+        		display_name = '%s password for %s at %s' % ("MSMTP", user, self._server)
 
 
-        usr_attrs = {'user':user, 'server':_server, 'protocol':smtp}
+        		usr_attrs = {'user':user, 'server':_server, 'protocol':smtp}
 
         # Now it gets ready to add into the keyring. Do it.
         # Its id will be returned if success or an exception will be raised
-    	gkey.item_create_sync(gkey.get_default_keyring_sync(), gkey.ITEM_NETWORK_PASSWORD, display_name, attrs, pw, False)
+    			gkey.item_create_sync(gkey.get_default_keyring_sync(), gkey.ITEM_NETWORK_PASSWORD, display_name, attrs, pw, False)
 	
-def get_username(mail):
-    keyring = Keyring("offlineimap", mail, "imap")
-    (username, password) = keyring.get_credentials()
-    return username
+		def get_username(mail):
+    			keyring = Keyring("offlineimap", mail, "imap")
+    			(username, password) = keyring.get_credentials()
+    			return username
 
-def get_password(mail):
-    keyring = Keyring("offlineimap", mail, "imap")
-    (username, password) = keyring.get_credentials()
-    return password
+		def get_password(mail):
+    			keyring = Keyring("offlineimap", mail, "imap")
+    			(username, password) = keyring.get_credentials()
+    			return password
 #
 else:
 #write password to file ( not suggested )
