@@ -253,7 +253,21 @@ it should be unique and have enough information ( ''' + self.name + ') :')
                                         break
                                 else:
                                         self.path_mailboxes=INPUT
-
+	def domain(self):
+		pass
+	def autodiscover(self):
+		try:
+			pass
+			#import lxml
+		except:
+			print "i need lxml"
+#		domain= domain(self)
+#		try get autoconfig.domain/mail/config-v1.1.xml
+#		except
+#			try domain/.well-known/autoconfig/mail/config-v1.1.xml
+		#parse xml else do generic
+	
+		pass
 
 	def present(self):
 		pass
